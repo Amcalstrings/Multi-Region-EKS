@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "Multi-Region Amazon EKS Cluster with Managed Node Group"
+
+Parameters:
+  ClusterName:
+    Type: String
+    Default: "eks-cluster"
+    Description: "EKS Cluster Name"
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: "VPC ID where EKS will be deployed"
+
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: "List of Subnets for the EKS Cluster"
+
+  KeyPairName:
+    Type: String
+    Default: "amcalkey"
+    Description: "EC2 Key Pair Name for SSH access"  
+
+Resources:
+  # IAM Role for EKS Cluster
+  EKSClusterRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ClusterName}-ClusterRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: eks.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+        - arn:aws:iam::aws:policy/AmazonEKSServicePolicy
+
+  # Create the EKS Cluster
+  EKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: !Ref ClusterName
+      RoleArn: !GetAtt EKSClusterRole.Arn
+      ResourcesVpcConfig:
+        SecurityGroupIds: []
+        SubnetIds: !Ref SubnetIds
+
+  # IAM Role for Worker Nodes
+  NodeInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ClusterName}-NodeRole-${AWS::Region}"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+        - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+
+  # Managed Node Group
+  EKSNodeGroup:
+    Type: AWS::EKS::Nodegroup
+    DependsOn: EKSCluster
+    Properties:
+      ClusterName: !Ref ClusterName
+      NodeRole: !GetAtt NodeInstanceRole.Arn
+      Subnets: !Ref SubnetIds
+      ScalingConfig:
+        MinSize: 1
+        MaxSize: 3
+        DesiredSize: 2
+      AmiType: AL2_x86_64
+      InstanceTypes: [ "t3.medium" ]
+      RemoteAccess:
+        Ec2SshKey: !Ref KeyPairName
+      Tags:
+        Name: !Sub "${ClusterName}-NodeGroup"
+
+Outputs:
+  ClusterName:
+    Description: "EKS Cluster Name"
+    Value: !Ref ClusterName
+  ClusterArn:
+    Description: "EKS Cluster ARN"
+    Value: !GetAtt EKSCluster.Arn
+  NodeInstanceRoleArn:
+    Description: "IAM Role for Node Group"
+    Value: !GetAtt NodeInstanceRole.Arn

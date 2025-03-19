@@ -1,0 +1,18 @@
+[   {
+      "ParameterKey": "ClusterName",
+      "ParameterValue": "eks-cluster-secondary"
+    },
+    {
+      "ParameterKey": "VpcId",
+      "ParameterValue": "vpc-02678d87b047d7d46"
+    },
+    {
+      "ParameterKey": "SubnetIds",
+      "ParameterValue": "subnet-019fe6011fed332b2,subnet-0cefc29b620dfd05b,subnet-0d62789694204f191,subnet-0fd84aba904c99d3d"
+    },
+    {
+        "ParameterKey": "KeyPairName",
+        "ParameterValue": "amcalkey"
+      }
+  ]
+  
