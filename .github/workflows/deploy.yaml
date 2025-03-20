@@ -21,7 +21,7 @@ jobs:
           aws-region: us-east-1  # Set to primary region
 
       - name: Configure kubectl for Primary Region
-        run: aws eks update-kubeconfig --name eks-cluster --region us-east-1
+        run: aws eks update-kubeconfig --name eks-cluster-primary --region us-east-1
 
       - name: Deploy ArgoCD Application to Primary Region
         run: kubectl apply -f manifests/argocd-app.yaml -n argocd
@@ -41,7 +41,7 @@ jobs:
           aws-region: us-west-2  # Set to secondary region
 
       - name: Configure kubectl for Secondary Region
-        run: aws eks update-kubeconfig --name eks-cluster --region us-west-2
+        run: aws eks update-kubeconfig --name eks-cluster-secondary --region us-west-2
 
       - name: Deploy ArgoCD Application to Secondary Region
         run: kubectl apply -f manifests/argocd-app.yaml -n argocd
