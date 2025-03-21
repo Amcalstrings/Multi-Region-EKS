@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS Backup Plan with Cross-Region Replication"
+
+Resources:
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: MyBackupVault
+
+  BackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: MyBackupPlan
+        BackupPlanRule:
+          - RuleName: DailyBackup
+            TargetBackupVault: !Ref BackupVault  
+            ScheduleExpression: "cron(0 12 * * ? *)"
+            StartWindowMinutes: 60
+            CompletionWindowMinutes: 120
+            Lifecycle:
+              DeleteAfterDays: 35
+            RecoveryPointTags:
+              Environment: "Production"
+              BackupType: "Daily"
+            CopyActions:
+              - DestinationBackupVaultArn: "arn:aws:backup:us-west-2:717279705656:backup-vault:MyBackupVault"
+
+  BackupSelection:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        SelectionName: "BackupSelection"
+        IamRoleArn: !GetAtt BackupRole.Arn
+        Resources:
+          - arn:aws:ec2:us-east-1:717279705656:instance/*
+
+  BackupRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: AWSBackupRole
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: backup.amazonaws.com
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSBackupServiceRolePolicyForBackup
+      Policies:
+        - PolicyName: AWSBackupS3Access
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - "s3:GetObject"
+                  - "s3:PutObject"
+                  - "s3:ListBucket"
+                Resource: 
+                  - "arn:aws:s3:::my-backup-bucket/*"
+                  - "arn:aws:s3:::my-backup-bucket"
+
+Outputs:
+  BackupPlanId:
+    Description: "The Backup Plan ID"
+    Value: !Ref BackupPlan
+
+  BackupVaultName:
+    Description: "The Backup Vault Name"
+    Value: !Ref BackupVault
